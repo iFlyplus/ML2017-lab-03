@@ -1,0 +1,24 @@
+Classification report for training data:
+
+- Classifier: AdaBoostClassifier(weak_classifier=sklearn.tree.tree.DecisionTreeClassifier, n_weakers_limit=50)
+
+- Report:
+             precision    recall  f1-score   support
+
+    nonface       1.00      1.00      1.00       300
+       face       1.00      1.00      1.00       300
+
+avg / total       1.00      1.00      1.00       600
+
+
+Classification report for testing data:
+
+- Classifier: AdaBoostClassifier(weak_classifier=sklearn.tree.tree.DecisionTreeClassifier, n_weakers_limit=50)
+
+- Report:
+             precision    recall  f1-score   support
+
+    nonface       0.98      0.97      0.98       200
+       face       0.98      0.98      0.98       200
+
+avg / total       0.98      0.98      0.98       400
