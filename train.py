@@ -122,6 +122,10 @@ def report(y_groundture, y_pred, filename=None):
     pass
 
 if __name__ == "__main__":
+    #
+    # Notice: dataset dir: './datasets/original/face', './datasets/original/nonface'
+    # 		pickle op will store the serialized data under  './datasets/original/'
+	
     # load dataset. (total 1000 samples, use num_train samples to fit adaboost model)
     num_train = 600
     dataset = get_data(num_train=num_train)
