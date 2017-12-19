@@ -1,10 +1,11 @@
 #
 # Authors: Ziwei Zhang
-# Date: Dec. 16, 2017
-#
+# Create Date: Dec. 15, 2017
+# Final Update Date: Dec. 17, 2017
+# 
 # Machine Learning 2017 Experiments No.3
 #    Face Classification Based on AdaBoost Algorithm
-#    Part 2: AdaBoostClassifier
+#    Part 2: AdaBoostClassifier implementation
 #
 import pickle
 import copy
@@ -23,8 +24,14 @@ class AdaBoostClassifier:
         self.weak_classifier = weak_classifier
         self.n_weakers_limit = n_weakers_limit
         self.weak_classifiers = []
-        self.weak_classifier_weights = np.zeros(self.n_weakers_limit, dtype=np.float64)
-        self.weak_classifier_errors = np.ones(self.n_weakers_limit, dtype=np.float64)
+        self.weak_classifier_weights = np.zeros(self.n_weakers_limit, dtype=np.float32)
+        self.weak_classifier_errors = np.ones(self.n_weakers_limit, dtype=np.float32)
+
+    def __str__(self):
+        _clf = str(type(self.weak_classifier))[8:-2]
+        _n = self.n_weakers_limit
+        _str = 'AdaBoostClassifier(weak_classifier=%s, n_weakers_limit=%d)' % (_clf, _n)
+        return _str
 
     def is_good_enough(self):
         '''Optional'''
@@ -45,15 +52,15 @@ class AdaBoostClassifier:
 
         # Clear any previous fit results
         self.weak_classifiers = []
-        self.weak_classifier_weights = np.zeros(self.n_weakers_limit, dtype=np.float64)
-        self. weak_classifier_errors = np.ones(self.n_weakers_limit, dtype=np.float64)
+        self.weak_classifier_weights = np.zeros(self.n_weakers_limit, dtype=np.float32)
+        self. weak_classifier_errors = np.ones(self.n_weakers_limit, dtype=np.float32)
 
         for iboost in range(self.n_weakers_limit):
             # boost step
             sample_weight, classifier_weight, classifier_error = \
                                             self._boost(iboost, X, y, sample_weight)
             
-            # early terminite
+            # early terminate
             if sample_weight is None:
                 if verbose:
                     print('the error of current classifier as bad as random guessing(or worse), stop boost')
@@ -69,12 +76,9 @@ class AdaBoostClassifier:
                 break
 
             if verbose:
-                print('boost step %d / %d: classifier weight: %.3f, classifier error: %.3f'
+                print('boost step %d / %d: classifier weight: %.3f, classification error: %.3f'
                         % (iboost+1, self.n_weakers_limit, classifier_weight, classifier_error))
             
-
-
-
     def _boost(self, iboost, X, y, sample_weight):
         '''
         Perform a single boost.
@@ -136,8 +140,6 @@ class AdaBoostClassifier:
         self.weak_classifiers.append(clf)
         return clf
 
-
-
     def predict_scores(self, X):
         '''Calculate the weighted sum score of the whole base classifiers for given samples.
 
@@ -169,7 +171,7 @@ class AdaBoostClassifier:
     
     def staged_predict(self, X, threshold=0):
         '''
-        Yeild the ensemble predicrtion after after each boost.
+        Yeild the ensemble prediction after after each boost.
 
         Inputs:
         - X: A numpy array of shape (N, D), 

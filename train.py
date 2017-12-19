@@ -1,7 +1,8 @@
 #
 # Authors: Ziwei Zhang
-# Date: Dec. 16, 2017
-#
+# Create Date: Dec. 15, 2017
+# Final Update Date: Dec. 19, 2017
+# 
 # Machine Learning 2017 Experiments No.3
 #    Face Classification Based on AdaBoost Algorithm
 #    Part 1: train script
@@ -14,6 +15,7 @@ import matplotlib.pyplot as plt
 from feature import NPDFeature
 from sklearn.tree import DecisionTreeClassifier
 from ensemble import AdaBoostClassifier
+from sklearn.metrics import classification_report, confusion_matrix
 
 def get_data(num_train=600):
     data_folder = './datasets/original/'
@@ -113,8 +115,11 @@ def load(filename):
     with open(filename, 'rb') as f:
         return pickle.load(f)
 
-def compute_accuracy(y_pred, y_grondtrue):
-    return np.mean(np.array(y_pred == y_grondtrue), dtype = np.float32)
+def compute_accuracy(y_pred, y_groundture):
+    return np.mean(np.array(y_pred == y_groundture), dtype = np.float32)
+
+def report(y_groundture, y_pred, filename=None):
+    pass
 
 if __name__ == "__main__":
     # load dataset. (total 1000 samples, use num_train samples to fit adaboost model)
@@ -130,14 +135,14 @@ if __name__ == "__main__":
     #       AdaBoostClassifier:
     #           weak_classifier: default use DecisionTreeClassifier
     #           n_weakers_limit: maximum number of weak classifier to boost an adaboost model.
-    max_depth = 1
+    max_depth = 2
     min_samples_leaf = 1
     min_samples_split = None
-    n_weakers_limit = 25
+    n_weakers_limit = 50
 
     print('\nUse DecisionTreeClassifier as weak classifiers.')
-    print('\nTree settings:\n- max_depth = %d\n- min_samples_leaf = %d\n- min_samples_split = %s'
-           % (max_depth, min_samples_leaf, str(min_samples_split)))
+    print('\nTree settings:\n- max_depth = %d\n- min_samples_leaf = %s\n- min_samples_split = %s'
+           % (max_depth, str(min_samples_leaf), str(min_samples_split)))
     print('\nAdaboost model settings:\n- n_weakers_limit = %d' % n_weakers_limit)
     print('\nStart boosting the model:')
 
@@ -147,43 +152,108 @@ if __name__ == "__main__":
     
     # predict labels for X_train and X_test and compute accuracy.
     y_pred_train = ada_model.predict(X_train)
-    y_pred_val = ada_model.predict(X_test)
+    y_pred_test = ada_model.predict(X_test)
     train_accuracy = compute_accuracy(y_pred_train, y_train)
-    val_accuracy = compute_accuracy(y_pred_val, y_test)
+    val_accuracy = compute_accuracy(y_pred_test, y_test)
 
     print('\ntraining accuracy: %.3f.\nvaluation accuracy: %.3f.' % (train_accuracy, val_accuracy))
     
+    # Classification Report
+    target_names = ['nonface', 'face']
+    print('\nClassification report for training data:\n\n- Classifier: %s\n\n- Report:\n%s' 
+            % (ada_model, classification_report(y_train, y_pred_train, target_names=target_names)))
+    print('\n\nClassification report for testing data:\n\n- Classifier: %s\n\n- Report:\n%s' 
+            % (ada_model, classification_report(y_test, y_pred_test, target_names=target_names)))
+    # wirte report into report.txt
+    filename = 'report.txt'
+    with open(filename, 'w') as f:
+        target_names = ['nonface', 'face']
+        f.write('Classification report for training data:\n\n- Classifier: %s\n\n- Report:\n%s' 
+                % (ada_model, classification_report(y_train, y_pred_train, target_names=target_names)))
+        f.write('\n\nClassification report for testing data:\n\n- Classifier: %s\n\n- Report:\n%s' 
+                % (ada_model, classification_report(y_test, y_pred_test, target_names=target_names)))
+
+    # fit a decision tree, use as a baseline
+    print('\nFit a decision tree...')
+    d = DecisionTreeClassifier()
+    d.fit(X_train, y_train)
+    dt_accuracy = d.score(X_test, y_test)
+    print('training accuracy: %.5f' % d.score(X_train, y_train))
+    print('test accuracy: %.5f' % dt_accuracy)
+
     # visualize result.
     # 
     # plot the ensemble prediction accuracy after each boost
     #
     print('\nVisualize result.')
-    ada_err_train = np.zeros((n_weakers_limit,))
+    ada_accuracy_train = np.zeros((n_weakers_limit,))
     for i, y_pred in enumerate(ada_model.staged_predict(X_train)):
-        ada_err_train[i] = compute_accuracy(y_pred, y_train)
+        ada_accuracy_train[i] = compute_accuracy(y_pred, y_train)
 
-    ada_err_val = np.zeros((n_weakers_limit,))
+    ada_accuracy_test = np.zeros((n_weakers_limit,))
     for i, y_pred in enumerate(ada_model.staged_predict(X_test)):
-        ada_err_val[i] = compute_accuracy(y_pred, y_test)
+        ada_accuracy_test[i] = compute_accuracy(y_pred, y_test)
     
+    # study the behavior of AdaBoost Classifier
+    # change the power of weak classifier (change tree depth)
+    ada_models_accuracys = [] # store different AdaBoost model behaviors
+    n_weakers = 50
+    for dt_depth in range(1, 6):
+        print('Fits a AdaBoost model with tree depth %d' %dt_depth)
+        dt = DecisionTreeClassifier(max_depth=dt_depth)
+        ada = AdaBoostClassifier(weak_classifier=dt, n_weakers_limit=n_weakers)
+        ada.fit(X_train, y_train,verbose=False)
+        accuracys = np.zeros((n_weakers,))
+        for i, y_pred in enumerate(ada.staged_predict(X_test)):
+            accuracys[i] = compute_accuracy(y_pred, y_test)
+        print('accuracy: %.3f' % accuracys[-1])
+        ada_models_accuracys.append(accuracys)
+
     fig = plt.figure()
     ax = fig.add_subplot(111)
+    ax.set_title('training accuracy and test accuracy')
 
-    ax.plot(np.arange(n_weakers_limit) + 1, ada_err_train,
-            label='AdaBoost Train Error',
+    ax.plot(np.arange(n_weakers_limit) + 1, ada_accuracy_train,
+            label='AdaBoost Train',
             color='blue')
 
-    ax.plot(np.arange(n_weakers_limit) + 1, ada_err_val,
-            label='AdaBoost Test Error',
+    ax.plot(np.arange(n_weakers_limit) + 1, ada_accuracy_test,
+            label='AdaBoost Test',
             color='red')
     
     ax.set_xlabel('n_classifiers')
     ax.set_ylabel('accuracy')
 
-    leg = ax.legend(loc='upper right', fancybox=True)
+    leg = ax.legend(loc='lower right', fancybox=True)
+    leg.get_frame().set_alpha(0.7)
+
+    
+    fig_2 = plt.figure()
+    ax = fig_2.add_subplot(111)
+    ax.set_title('AdaBoost Test accuracy with different weak decision tree classifier')
+
+    ax.plot(np.arange(n_weakers) + 1, ada_models_accuracys[0],
+            label='tree depth=1',
+            color='blue')
+    ax.plot(np.arange(n_weakers) + 1, ada_models_accuracys[1],
+            label='tree depth=2',
+            color='red')
+    ax.plot(np.arange(n_weakers) + 1, ada_models_accuracys[2],
+            label='tree depth=3',
+            color='green')
+    ax.plot(np.arange(n_weakers) + 1, ada_models_accuracys[3],
+            label='tree depth=4',
+            color='gold')
+    ax.plot(np.arange(n_weakers) + 1, ada_models_accuracys[4],
+            label='tree depth=5',
+            color='orange')
+
+    ax.plot(np.arange(n_weakers_limit) + 1, [dt_accuracy] * n_weakers_limit, 'k--', 
+            label='Decision Tree')
+
+    ax.set_xlabel('n_classifiers')
+    ax.set_ylabel('accuracy')
+    leg = ax.legend(loc='lower right', fancybox=True)
     leg.get_frame().set_alpha(0.7)
 
     plt.show()
-
-# deep=1, n=20, ===> train_a=1.0, test_a=0.967
-# deep=1, n=10, ===> train_a=0.993, test_a=0.942
